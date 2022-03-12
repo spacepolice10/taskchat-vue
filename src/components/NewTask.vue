@@ -6,7 +6,9 @@ import { ref, onMounted } from "vue";
 const props = defineProps(["id"]);
 let taskName = ref("");
 let taskDescription = ref("");
-let category = ref("0");
+let taskDate = ref("");
+let taskCategory = ref("0");
+let taskPictureLink = ref("null");
 
 onMounted(() => {
   document.querySelector("input").focus();
@@ -16,20 +18,25 @@ function updateImagePreview() {
 }
 async function uploadImage() {
   const image = document.querySelector("#test").files[0];
+  if (!image) return;
   const imageName = image.name;
+  taskPictureLink = { value: `public/${imageName}` };
   const { data } = await supabase.storage
     .from("images")
     .upload(`public/${imageName}`, image);
-  console.log(data);
 }
-async function createNewTask() {
-  // uploadImage()
+async function addCardToDatabase() {
   const { data } = await supabase.from("cards").insert({
     name: taskName.value,
     list_id: props.id,
-    category_id: Number(category.value),
+    category_id: Number(taskCategory.value),
     description: taskDescription.value,
+    date: taskDate.value,
+    picture_link: taskPictureLink.value,
   });
+}
+async function createNewTask() {
+  uploadImage().then(() => addCardToDatabase());
 }
 </script>
 
@@ -38,13 +45,12 @@ async function createNewTask() {
     <h1 class="text-2xl font-bold">Task title:</h1>
     <input
       class="mx-2 h-10 rounded-lg border-none bg-gray-100 p-2 text-gray-500"
-      :value="taskName"
-      @input="taskName = $event.target.value"
+      v-model="taskName"
     />
     <h2 class="text-md font-bold">Category:</h2>
     <RadioGroup
       class="my-2 grid cursor-default grid-cols-3 items-baseline gap-y-5"
-      v-model="category"
+      v-model="taskCategory"
     >
       <RadioGroupOption class="mt-2" v-slot="{ checked }" value="0">
         <span
@@ -101,12 +107,11 @@ async function createNewTask() {
     <input
       class="mx-2 rounded-lg border-none bg-gray-100 text-gray-500"
       type="date"
-      value="2022-01-01"
+      v-model="taskDate"
     />
     <h2 class="text-md font-bold">Description:</h2>
     <textarea
-      :value="taskDescription"
-      @input="taskDescription = $event.target.value"
+      v-model="taskDescription"
       class="mx-2 resize-none rounded-lg border-none bg-gray-100 text-gray-500"
     >
     </textarea>

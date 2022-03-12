@@ -20,9 +20,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-screen justify-center bg-gray-50">
+  <div class="flex max-h-screen w-full snap-x overflow-scroll bg-gray-50">
     <div
-      class="m-2 flex flex-col gap-6 border"
+      class="max-w m-2 flex min-w-fit snap-center scroll-m-0 flex-col gap-6 overflow-y-scroll"
       :key="list.id"
       v-for="list in database"
     >
@@ -42,7 +42,7 @@ onMounted(async () => {
           leave-from-class="translate-y-0 opacity-100"
           leave-to-class="translate-y-1 opacity-0"
         >
-          <PopoverPanel class="absolute z-10 mt-96">
+          <PopoverPanel class="fixed z-10 mt-96">
             <new-task :id="addingListId" />
           </PopoverPanel>
         </transition>

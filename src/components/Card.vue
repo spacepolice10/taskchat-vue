@@ -1,9 +1,11 @@
 <script setup>
 const props = defineProps(["card"]);
-import { ref } from "vue";
-import { XCircleIcon } from "@heroicons/vue/solid";
+import supabase from "../../lib/db";
+import { onMounted, ref } from "vue";
+import { XCircleIcon, CalendarIcon } from "@heroicons/vue/solid";
 import CardComments from "@/components/cardComponents/CardComments.vue";
 let showMore = ref(false);
+let taskPicture = ref(false);
 let color = "bg-gray-50";
 switch (props.card.category_id) {
   case 0:
@@ -22,6 +24,23 @@ switch (props.card.category_id) {
     color = "bg-pink-100 text-pink-400";
     break;
 }
+
+onMounted(async () => {
+  loadImages().then((x) => {
+    if (x.split("/").at(-1) != "null") {
+      taskPicture.value.src = x;
+    } else {
+      taskPicture.value.style.display = "none";
+    }
+  });
+});
+
+async function loadImages() {
+  const { publicURL, error } = supabase.storage
+    .from("images")
+    .getPublicUrl(props.card.picture_link);
+  return publicURL;
+}
 </script>
 
 <template>
@@ -30,16 +49,15 @@ switch (props.card.category_id) {
     class="m-2 w-80 rounded-xl p-4 duration-300"
     :class="showMore ? [color, 'pb-60 shadow-lg'] : [color, 'shadow-sm']"
   >
-    <div class="flex justify-between">
-      <p class="font-bold" v-if="!showMore">{{ card.name }}</p>
-      <h1 class="text-4xl font-bold" v-if="showMore">{{ card.name }}</h1>
-      <button v-if="showMore">
-        <XCircleIcon
-          class="h-6 w-6 fill-current text-gray-400 hover:text-gray-500"
-        />
-      </button>
+    <div class="flex flex-col justify-between">
+      <img class="w-full rounded-2xl object-cover" ref="taskPicture" />
+      <h1 class="mt-2 text-2xl font-bold">{{ card.name }}</h1>
     </div>
-    <p>{{ card.description }}</p>
+    <p class="break-words font-extralight">{{ card.description }}</p>
+    <div class="mt-2 flex">
+      <CalendarIcon class="h-6 w-6" />
+      {{ card.date }}
+    </div>
     <transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="translate-y-1 opacity-0"
@@ -48,13 +66,6 @@ switch (props.card.category_id) {
       leave-from-class="translate-y-0 opacity-100"
       leave-to-class="translate-y-1 opacity-0"
     >
-      <div
-        class="absolute flex w-10/12 flex-col justify-between"
-        v-if="showMore"
-      >
-        <p>Category: {{ card.category_id }}</p>
-        <p>Description: {{ card.description }}</p>
-      </div>
     </transition>
   </div>
 </template>
