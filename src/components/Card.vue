@@ -1,29 +1,17 @@
 <script setup>
 const props = defineProps(["card"]);
+const emits = defineEmits(["drop", "cardDeleted"]);
 import supabase from "../../lib/db";
 import { onMounted, ref } from "vue";
-import { XCircleIcon, CalendarIcon } from "@heroicons/vue/solid";
+
+import { XCircleIcon, CalendarIcon } from "@heroicons/vue/outline";
 import CardComments from "@/components/cardComponents/CardComments.vue";
-let showMore = ref(false);
+import CardEditMenu from "@/components/cardComponents/CardEditMenu.vue";
+import CardTitleCategory from "@/components/cardComponents/CardTitleCategory.vue";
 let taskPicture = ref(false);
-let color = "bg-gray-50";
-switch (props.card.category_id) {
-  case 0:
-    color = "bg-gray-100 text-gray-400";
-    break;
-  case 1:
-    color = "bg-blue-100 text-blue-400";
-    break;
-  case 2:
-    color = "bg-yellow-100 text-yellow-400";
-    break;
-  case 3:
-    color = "bg-green-100 text-green-400";
-    break;
-  case 4:
-    color = "bg-pink-100 text-pink-400";
-    break;
-}
+let cardEl = ref(null);
+let dropped = ref(null);
+let somethingIsDragged = ref(false);
 
 onMounted(async () => {
   loadImages().then((x) => {
@@ -35,37 +23,98 @@ onMounted(async () => {
   });
 });
 
+function deleteCard() {
+  cardEl.value.remove();
+}
+
 async function loadImages() {
   const { publicURL, error } = supabase.storage
     .from("images")
     .getPublicUrl(props.card.picture_link);
   return publicURL;
 }
+
+function onDrag(e, card) {
+  e.target.classList.add("dragged");
+  e.dataTransfer.setData("card", JSON.stringify(card));
+  cardEl.value.style.opacity = "0%";
+  cardEl.value.style.margin = `0px 0px -${
+    cardEl.value.offsetHeight + "px"
+  } 0px`;
+}
+function onDragEnter(e, card) {}
+function onDragLeave(e, card) {}
+function onDragEnd(e, card) {
+  cardEl.value.style.opacity = "100%";
+  cardEl.value.style.margin = "8px";
+}
+function onDrop(e, card) {
+  const dragged = JSON.parse(e.dataTransfer.getData("card"));
+  dropped.value = card;
+  emits("drop", {
+    dragElem: dragged,
+    dropElem: dropped.value,
+  });
+}
 </script>
 
 <template>
   <div
-    @click="showMore = !showMore"
-    class="m-2 w-80 rounded-xl p-4 duration-300"
-    :class="showMore ? [color, 'pb-60 shadow-lg'] : [color, 'shadow-sm']"
+    ref="cardEl"
+    draggable="true"
+    @mouseover="somethingIsDragged = true"
+    @mouseleave="somethingIsDragged = false"
+    @dragstart="onDrag($event, card)"
+    @dragover.prevent
+    @dragenter="onDragEnter($event, card)"
+    @dragleave="onDragLeave($event, card)"
+    @dragend="onDragEnd($event, card)"
+    @drop="onDrop($event, card)"
+    @contextmenu="test($event)"
+    class="placeholder m-2 w-80 rounded-3xl bg-white p-4 text-slate-700 shadow-md duration-300"
+    :class="somethingIsDragged ? 'droppable' : ''"
   >
-    <div class="flex flex-col justify-between">
-      <img class="w-full rounded-2xl object-cover" ref="taskPicture" />
-      <h1 class="mt-2 text-2xl font-bold">{{ card.name }}</h1>
+    <div @dragenter.prevent>
+      <div class="flex flex-col justify-between">
+        <img
+          draggable="false"
+          class="placeholder pointer-events-none w-full rounded-3xl object-cover"
+          ref="taskPicture"
+        />
+        <div class="flex items-baseline justify-between gap-2">
+          <card-title-category
+            :name="card.name"
+            :category_id="card.category_id"
+          />
+          <card-edit-menu @cardDeleted="deleteCard" :id="card.id" />
+        </div>
+      </div>
+      <article
+        class="prose pointer-events-none break-words font-extralight prose-a:underline"
+      >
+        {{ card.description }}
+      </article>
+      <div class="pointer-events-none mt-2 flex gap-4 font-thin italic">
+        <CalendarIcon class="h-6 w-6" />
+        {{ card.date }}
+      </div>
     </div>
-    <p class="break-words font-extralight">{{ card.description }}</p>
-    <div class="mt-2 flex">
-      <CalendarIcon class="h-6 w-6" />
-      {{ card.date }}
-    </div>
-    <transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="translate-y-1 opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="translate-y-1 opacity-0"
-    >
-    </transition>
   </div>
 </template>
+
+<style>
+.droppable {
+  /* transform: translate(0, 0); */
+}
+.placeholder {
+  animation: appear 0.2s;
+}
+@keyframes appear {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+  }
+}
+</style>
