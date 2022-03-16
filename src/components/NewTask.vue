@@ -1,9 +1,12 @@
 <script setup>
-import { RadioGroup, RadioGroupLabel, RadioGroupOption } from "@headlessui/vue";
-import { ArrowCircleUpIcon } from "@heroicons/vue/solid";
+import { ArrowCircleUpIcon, XCircleIcon } from "@heroicons/vue/solid";
 import supabase from "../../lib/db";
 import { ref, onMounted } from "vue";
-const props = defineProps(["id"]);
+import CategoryPicker from "@/components/newTaskComponents/CategoryPicker.vue";
+const props = defineProps(["cards", "id"]);
+const emits = defineEmits(["task-created"]);
+const file = ref(null);
+const title = ref(null);
 let taskName = ref("");
 let taskDescription = ref("");
 let taskDate = ref("");
@@ -11,13 +14,13 @@ let taskCategory = ref("0");
 let taskPictureLink = ref("null");
 
 onMounted(() => {
-  document.querySelector("input").focus();
+  title.value.focus();
 });
-function updateImagePreview() {
-  // document.querySelector('img').src = document.querySelector('#test').files[0]
-}
+// function updateImagePreview() {
+//   document.querySelector('img').src = document.querySelector('#test').files[0]
+// }
 async function uploadImage() {
-  const image = document.querySelector("#test").files[0];
+  const image = file.value.files[0];
   if (!image) return;
   const imageName = image.name;
   taskPictureLink = { value: `public/${imageName}` };
@@ -26,6 +29,8 @@ async function uploadImage() {
     .upload(`public/${imageName}`, image);
 }
 async function addCardToDatabase() {
+  const lastCard = props.cards.at(-1);
+  const positionToSet = lastCard ? lastCard.position + 1 : 0;
   const { data } = await supabase.from("cards").insert({
     name: taskName.value,
     list_id: props.id,
@@ -33,76 +38,30 @@ async function addCardToDatabase() {
     description: taskDescription.value,
     date: taskDate.value,
     picture_link: taskPictureLink.value,
+    position: positionToSet,
   });
 }
 async function createNewTask() {
-  uploadImage().then(() => addCardToDatabase());
+  uploadImage()
+    .then(() => addCardToDatabase())
+    .then(() => emits("task-created"));
 }
 </script>
 
 <template>
-  <div class="flex min-w-max flex-col gap-2 rounded-lg bg-white p-2 shadow-lg">
-    <h1 class="text-2xl font-bold">Task title:</h1>
+  <div
+    class="it flex min-w-fit flex-col gap-2 rounded-lg bg-white p-2 shadow-lg md:min-w-max"
+  >
+    <div class="flex w-full justify-between">
+      <h1 class="text-2xl font-bold">Task title:</h1>
+    </div>
     <input
       class="mx-2 h-10 rounded-lg border-none bg-gray-100 p-2 text-gray-500"
+      ref="title"
       v-model="taskName"
     />
     <h2 class="text-md font-bold">Category:</h2>
-    <RadioGroup
-      class="my-2 grid cursor-default grid-cols-3 items-baseline gap-y-5"
-      v-model="taskCategory"
-    >
-      <RadioGroupOption class="mt-2" v-slot="{ checked }" value="0">
-        <span
-          :class="
-            checked
-              ? 'm-2 rounded-lg bg-gray-400 p-2 text-gray-100 duration-150'
-              : 'm-2 rounded-lg bg-gray-100 p-2 duration-150 hover:bg-gray-200'
-          "
-          >None</span
-        >
-      </RadioGroupOption>
-      <RadioGroupOption v-slot="{ checked }" value="1">
-        <span
-          :class="
-            checked
-              ? 'm-2 rounded-lg bg-blue-400 p-2 text-blue-100 duration-150'
-              : 'm-2 rounded-lg bg-blue-100 p-2 duration-150 hover:bg-blue-200'
-          "
-          >💼 Work</span
-        >
-      </RadioGroupOption>
-      <RadioGroupOption v-slot="{ checked }" value="2">
-        <span
-          :class="
-            checked
-              ? 'm-2 rounded-lg bg-yellow-400 p-2 text-yellow-100 duration-150'
-              : 'm-2 rounded-lg bg-yellow-100 p-2 duration-150 hover:bg-yellow-200'
-          "
-          >👋 Personal</span
-        >
-      </RadioGroupOption>
-      <RadioGroupOption v-slot="{ checked }" value="3">
-        <span
-          :class="
-            checked
-              ? 'm-2 rounded-lg bg-green-400 p-2 text-green-100 duration-150'
-              : 'm-2 rounded-lg bg-green-100 p-2 duration-150 hover:bg-green-200'
-          "
-          >😘 Friends</span
-        >
-      </RadioGroupOption>
-      <RadioGroupOption v-slot="{ checked }" value="4">
-        <span
-          :class="
-            checked
-              ? 'm-2 rounded-lg bg-pink-400 p-2 text-pink-100 duration-150'
-              : 'm-2 rounded-lg bg-pink-100 p-2 duration-150 hover:bg-pink-200'
-          "
-          >📚 Education</span
-        >
-      </RadioGroupOption>
-    </RadioGroup>
+    <category-picker @change-category="(x) => (taskCategory = x)" />
     <h2 class="text-md font-bold">Date:</h2>
     <input
       class="mx-2 rounded-lg border-none bg-gray-100 text-gray-500"
@@ -118,7 +77,7 @@ async function createNewTask() {
     <h2 class="text-md font-bold">Image:</h2>
     <input
       @change="updateImagePreview"
-      id="test"
+      ref="file"
       class="text-sm font-light text-gray-400 file:my-4 file:mx-2 file:rounded-lg file:border-none file:bg-gray-100 file:p-2 file:font-light file:text-gray-400 hover:file:bg-gray-50"
       type="file"
     />
